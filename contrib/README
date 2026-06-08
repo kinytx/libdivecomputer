@@ -41,6 +41,30 @@ Android NDK
 
   $ANDROID_NDK/ndk-build -C contrib/android NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=Android.mk
 
+Garmin sidecar
+--------------
+
+The `garmin-sidecar` directory contains an experimental Garmin Descent bypass
+module. It is intentionally kept outside the main libdivecomputer ABI while the
+Garmin BLE/GFDI and WASM path is being validated.
+
+It includes:
+
+  * transport-neutral Garmin BLE/GFDI C core
+  * C++ wrapper
+  * LDC-style callback adapter
+  * WASM bridge for backend JS
+  * WSS relay sketch for mini-program BLE forwarding
+
+Build native smoke tests:
+
+  cd contrib/garmin-sidecar
+  make test
+
+On Windows without make:
+
+  powershell -ExecutionPolicy Bypass -File test.ps1
+
 Linux udev rules
 ================
 
