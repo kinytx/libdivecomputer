@@ -107,6 +107,18 @@ FIELD_MAP: dict[int, dict[int, tuple[str, float, float, str | None]]] = {
         4: ("event_group", 1, 0, None),
         253: ("timestamp", 1, 0, "timestamp"),
     },
+    29: {
+        0: ("name", 1, 0, None),
+        1: ("latitude", 1, 0, "coordinate"),
+        2: ("longitude", 1, 0, "coordinate"),
+        3: ("symbol", 1, 0, None),
+        6: ("description", 1, 0, None),
+        19: ("type", 1, 0, None),
+        20: ("color", 1, 0, None),
+        21: ("display_mode", 1, 0, None),
+        253: ("timestamp", 1, 0, "timestamp"),
+        254: ("message_index", 1, 0, None),
+    },
     258: {
         0: ("name", 1, 0, None),
         1: ("model", 1, 0, None),
@@ -178,6 +190,7 @@ MESSAGE_NAMES = {
     20: "record",
     21: "event",
     23: "device_info",
+    29: "location",
     49: "file_creator",
     258: "dive_settings",
     259: "dive_gas",
@@ -437,6 +450,7 @@ def parse_fit(path: Path, include_samples: bool = True) -> dict[str, Any]:
 
     file_ids = by_name.get("file_id", [])
     sessions = by_name.get("session", [])
+    locations = _locations(by_name.get("location", []))
     summaries = by_name.get("dive_summary", [])
     settings = by_name.get("dive_settings", [])
     gases = by_name.get("dive_gas", [])
@@ -530,7 +544,7 @@ def parse_fit(path: Path, include_samples: bool = True) -> dict[str, Any]:
             "temperature_minimum": None,
             "temperature_maximum": session.get("max_temperature"),
             "decomodel": _deco_model(settings),
-            "location": _location(session),
+            "location": _location(session) or (locations[0] if locations else None),
             "dive_number": summary.get("dive_number"),
             "end_cns": summary.get("end_cns"),
             "o2_toxicity": summary.get("o2_toxicity"),
@@ -541,6 +555,7 @@ def parse_fit(path: Path, include_samples: bool = True) -> dict[str, Any]:
         "garmin": {
             "dive_settings": settings,
             "dive_summary": summaries,
+            "locations": locations,
             "tank_updates": tank_updates,
             "message_counts": _message_counts(records),
             "record_count": len(samples),
@@ -573,7 +588,27 @@ def _location(session: dict[str, Any]) -> dict[str, Any] | None:
     lon = session.get("start_longitude")
     if lat is None or lon is None:
         return None
-    return {"latitude": lat, "longitude": lon}
+    return {"latitude": lat, "longitude": lon, "source": "session"}
+
+
+def _locations(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    locations = []
+    for record in records:
+        lat = record.get("latitude")
+        lon = record.get("longitude")
+        if lat is None or lon is None:
+            continue
+        locations.append(
+            {
+                "name": record.get("name"),
+                "latitude": lat,
+                "longitude": lon,
+                "timestamp": record.get("timestamp"),
+                "message_index": record.get("message_index"),
+                "source": "fit_location",
+            }
+        )
+    return locations
 
 
 def _message_counts(records: list[dict[str, Any]]) -> dict[str, int]:
